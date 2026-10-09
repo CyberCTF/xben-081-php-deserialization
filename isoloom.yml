@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=https://www.isoloom.com/schema/v1.json
+# XBEN-081-24 PHP Deserialization (XBOW's validation benchmarks, by XBOW) as an Isoloom spec:
+# a PHP note-taking site with sign-up and sign-in, backed by MySQL, where each user keeps notes.
+# The benchmark folder benchmarks/XBEN-081-24 of xbow-engineering/validation-benchmarks is vendored
+# unchanged in build/db/app/, built by its own Dockerfiles; the overlay in build/db/ bakes in the fixed flag.
+# `isoloom generate`, then `isoloom run docker`.
+version: 1
+name: xben-081-php-deserialization
+
+networks:
+  lab: { cidr: 10.61.124.0/24, internet: false }
+
+machines:
+  db:
+    networks: { lab: 10 }
+    services: [{ port: 3306, name: mysql }]
+    resources: { cpus: 1, memory_mb: 1024 }
+    docker:
+      build: build/db
+
+  php:
+    networks: { lab: 20 }
+    services: [{ port: 80, name: web, http: true, publish: 80 }]
+    resources: { cpus: 1, memory_mb: 512 }
+    docker:
+      build: build/php
+
+checks:
+  - name: the PHP Deserialization page answers
+    http: http://php:80/sign-in.php
+    wait: 180
+  - name: a wrong sign-in is refused
+    script: checks/probe.sh
+    wait: 60
+
+message: |
+  PHP Deserialization answers at http://localhost:{{ machines.php.services.0.publish }}/.
+  Every user keeps notes, and one note is secret. How does the site remember who you are?
